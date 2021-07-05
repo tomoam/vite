@@ -117,7 +117,11 @@ export interface ServerOptions {
   /**
    * Create Vite dev server to be used as a middleware in an existing server
    */
-  middlewareMode?: boolean | 'html' | 'ssr'
+  middlewareMode?:
+    | boolean
+    | 'html'
+    | 'ssr'
+    | { mode: true | 'html' | 'ssr'; parentServer: http.Server }
   /**
    * Prepend this folder to http requests, for use when proxying vite as a subfolder
    * Should start and end with the `/` character
@@ -307,8 +311,12 @@ export async function createServer(
   const serverConfig = config.server
   const httpsOptions = await resolveHttpsConfig(config)
   let { middlewareMode } = serverConfig
+  const parentServer =
+    typeof middlewareMode === 'object' ? middlewareMode.parentServer : null
   if (middlewareMode === true) {
     middlewareMode = 'ssr'
+  } else if (typeof middlewareMode === 'object') {
+    middlewareMode = middlewareMode.mode === true ? 'ssr' : middlewareMode.mode
   }
 
   const middlewares = connect() as Connect.Server
@@ -459,7 +467,7 @@ export async function createServer(
   // proxy
   const { proxy } = serverConfig
   if (proxy) {
-    middlewares.use(proxyMiddleware(httpServer, config))
+    middlewares.use(proxyMiddleware(parentServer || httpServer, config))
   }
 
   // base
